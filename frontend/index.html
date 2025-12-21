@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Conteneurisée</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🐳 Application Conteneurisée</h1>
+        
+        <div class="status-section">
+            <h2>Statut de l'API</h2>
+            <button onclick="checkStatus()">Vérifier le statut</button>
+            <p id="status-result"></p>
+        </div>
+
+        <div class="add-item-section">
+            <h2>Ajouter un nouvel élément</h2>
+            <form id="add-item-form" onsubmit="addItem(event)">
+                <input type="text" id="item-name" placeholder="Nom de l'élément" required>
+                <textarea id="item-description" placeholder="Description (optionnelle)"></textarea>
+                <button type="submit">Ajouter</button>
+            </form>
+            <p id="add-result"></p>
+        </div>
+
+        <div class="items-section">
+            <h2>Liste des éléments</h2>
+            <button onclick="loadItems()">Rafraîchir</button>
+            <div id="items-container"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

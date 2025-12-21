@@ -1,0 +1,129 @@
+version: '3.8'
+
+# SERVICES
+
+services:
+
+  # Base de données PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: app-database
+    restart: unless-stopped
+    
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    
+    volumes:
+      # Persistence des données
+      - postgres_data:/var/lib/postgresql/data
+      # Script d'initialisation
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    
+    networks:
+      - app-network
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    
+    # Sécurité : limiter les capacités
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+
+  # API Flask
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: app-api
+    restart: unless-stopped
+    
+    environment:
+      DB_HOST: db
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      API_PORT: ${API_PORT}
+    
+    networks:
+      - app-network
+    
+    depends_on:
+      db:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/status')\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    
+    # Sécurité : limiter les capacités
+    cap_drop:
+      - ALL
+    
+    # Éviter l'escalade de privilèges
+    security_opt:
+      - no-new-privileges:true
+
+  # Frontend Nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: app-frontend
+    restart: unless-stopped
+    
+    ports:
+      - "80:8080"
+    
+    networks:
+      - app-network
+    
+    depends_on:
+      api:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    
+    # Sécurité : limiter les capacités
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+    
+    # Éviter l'escalade de privilèges
+    security_opt:
+      - no-new-privileges:true
+
+# VOLUMES
+
+volumes:
+  postgres_data:
+    driver: local
+
+# NETWORKS
+
+networks:
+  app-network:
+    driver: bridge
